@@ -1,6 +1,0 @@
-# defaults:
-# - env
-_target_: rl.ppo_core.KspaceMaskedActorCritic_MT
-action_space: ???
-feature_dim: 256
-mt_shape: [ 180 ]
