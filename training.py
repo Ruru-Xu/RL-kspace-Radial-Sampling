@@ -16,24 +16,6 @@ import torch
 import random
 import warnings
 warnings.filterwarnings('ignore')
-# from segment.seg_test import load_5segmodels
-
-
-def get_optimizer(parameters, optimizer='adamw', lr=1e-3, weight_decay=5e-4, lr_momentum=0.9):
-    if optimizer == "adamw":
-        optimizer = torch.optim.AdamW(
-            parameters,
-            lr=lr,
-            weight_decay=weight_decay,
-        )
-    elif optimizer == "sgd":
-        optimizer = torch.optim.SGD(
-            parameters,
-            lr=lr,
-            momentum=lr_momentum,
-            weight_decay=weight_decay,
-        )
-    return optimizer
 
 class Namespace:
     def __init__(self, **kwargs):
@@ -102,7 +84,7 @@ def main(cfg):
 
 def train(cfg, ac, envs, eval_envs, writer):
     parameters = filter(lambda p: p.requires_grad, ac.parameters())
-    optimizer = get_optimizer(parameters, optimizer=cfg.optim.name, lr=cfg.optim.lr, weight_decay=cfg.optim.weight_decay)
+    optimizer = torch.optim.AdamW(parameters, lr=cfg.optim.lr, weight_decay=cfg.optim.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.scheduler.step_size, gamma=cfg.scheduler.gamma)
 
     num_envs = cfg.num_envs
