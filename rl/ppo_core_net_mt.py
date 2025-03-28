@@ -43,7 +43,6 @@ class TransformerEncoder(nn.Module):
             x = layer(x)
         return self.norm(x)
 
-
 class CrossAttentionFusion(nn.Module):
     def __init__(self, channels):
         super().__init__()
@@ -69,25 +68,9 @@ class CrossAttentionFusion(nn.Module):
 
 class Kspace_Net_MT(nn.Module):
 
-    def __init__(self, act_dim,
-                 dataset,
-                 image_shape,
-                 dropout,
-                 pretrained,
-                 model_type,
-                 dropout_extra,
-                 feature_dim,
-                 mt_shape,
-                 ):
+    def __init__(self, act_dim, feature_dim, mt_shape, dropout=0.0):
         super().__init__()
-        self.dataset = dataset
-        self.image_shape = image_shape
-        self.dropout = dropout
-        self.pretrained = pretrained
-        self.model_type = model_type
         self.act_dim = act_dim
-        self.dropout_extra = dropout_extra
-        self.aux_shape = 0
         self.mt_shape = mt_shape
         patch_size, num_heads, num_layers = 16, 8, 6  # Increased heads and layers
 
@@ -142,7 +125,7 @@ class Kspace_Net_MT(nn.Module):
             nn.LayerNorm(256),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.1),
-            nn.Linear(256, act_dim)
+            nn.Linear(256, self.act_dim)
         )
 
         self.apply(self._init_weights)
@@ -194,23 +177,8 @@ class Kspace_Net_MT(nn.Module):
 
 class Kspace_Net_Critic_MT(nn.Module):
 
-    def __init__(self, dataset,
-                 image_shape,
-                 dropout,
-                 pretrained,
-                 model_type,
-                 dropout_extra,
-                 feature_dim,
-                 mt_shape, ):
+    def __init__(self, feature_dim, mt_shape, dropout=0.0):
         super().__init__()
-
-        self.dataset = dataset
-        self.image_shape = image_shape
-        self.dropout = dropout
-        self.pretrained = pretrained
-        self.model_type = model_type
-        self.dropout_extra = dropout_extra
-        self.aux_shape = 0
         self.mt_shape = mt_shape
         patch_size, num_heads, num_layers = 16, 8, 6  # Increased heads and layers
 
