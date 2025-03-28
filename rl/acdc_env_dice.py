@@ -1,12 +1,6 @@
 import fastmri
 import torch
-import numpy as np
 from pytorch_msssim import ssim as py_msssim
-import matplotlib.pyplot as plt
-from scipy.ndimage import sobel
-from skimage.metrics import structural_similarity
-
-from segment.seg_test import get_seg_result
 from radial_sampling_mask import RadialSampler
 radial_sampler = RadialSampler()
 
@@ -17,9 +11,8 @@ class Namespace:
 
 class ACDC_Env:
 
-    def __init__(self, data_loader, budget, observation_space=(3, 640, 400), device='cuda'):
+    def __init__(self, data_loader, budget, observation_space, device='cuda'):
 
-        # Environment properties and initialization
         self.state = 0
         self.done = False
         self.data_loader = data_loader
@@ -67,7 +60,6 @@ class ACDC_Env:
         self.previous_heart_ssim, self.previous_heart_mse = self.calculate_heart_ssim_mse(initial_recons, self.state['target'].unsqueeze(1), heart_mask)
         self.previous_global_ssim = py_msssim(self.state['target'].unsqueeze(1), initial_recons, data_range=1.0,
                                               size_average=False)
-        # self.previous_dice_score = get_seg_result(initial_recons.squeeze(1).cpu().detach().numpy(), self.seg_model, self.state['seg_mask'].numpy())
         return s0
 
 
@@ -81,22 +73,15 @@ class ACDC_Env:
         global_ssim = py_msssim(self.state['target'].unsqueeze(1), recons, data_range=1.0, size_average=False)
         heart_mask = self.state['seg_mask'].to(self.device)
 
-        # Calculate heart-focused metrics
         heart_ssim, heart_mse = self.calculate_heart_ssim_mse(recons, self.state['target'].unsqueeze(1), heart_mask)
-
-        # dice_score = torch.tensor(get_seg_result(recons.squeeze(1).cpu().detach().numpy(), self.seg_model, self.state['seg_mask'].numpy()), device=self.device)
-
         delta_global_ssim = global_ssim - self.previous_global_ssim
         delta_heart_ssim = heart_ssim - self.previous_heart_ssim
         delta_heart_mse = heart_mse - self.previous_heart_mse
-        # delta_dice_score = dice_score - self.previous_dice_score
-
         alpha, beta = calculate_dynamic_weight(global_ssim.mean().item(), heart_ssim.mean().item(), self.counter, self.budget)
         reward = 0.6 * (alpha * delta_global_ssim + beta * delta_heart_ssim) - 0.4 * delta_heart_mse
 
         # Update previous scores
         self.previous_heart_ssim = heart_ssim
-        # self.previous_dice_score = dice_score
         self.previous_global_ssim = global_ssim
         self.previous_heart_mse = heart_mse
 
