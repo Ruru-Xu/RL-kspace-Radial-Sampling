@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from rl.nn_utils import MaskedCategorical
-from rl.ppo_core_net_mt_v3 import Kspace_Net_MT, Kspace_Net_Critic_MT
+from rl.ppo_core_net_mt import Kspace_Net_MT, Kspace_Net_Critic_MT
 
 
 def weight_init(m):
@@ -40,20 +40,6 @@ def count_vars(module):
 
 
 def discount_cumsum(x, discount):
-    """
-    magic from rllab for computing discounted cumulative sums of vectors.
-
-    input:
-        vector x,
-        [x0,
-         x1,
-         x2]
-
-    output:
-        [x0 + discount * x1 + discount^2 * x2,
-         x1 + discount * x2,
-         x2]
-    """
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
@@ -81,28 +67,12 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class KspaceMaskedCategoricalActor_MT(Actor):
 
-    def __init__(self, obs_dim, act_dim, hidden_sizes, activation, dataset, image_shape, dropout,
-                 pretrained, model_type, dropout_extra, aux_shape, using_init, feature_dim,
-                 mt_shape):
+    def __init__(self, act_dim, feature_dim, mt_shape):
         super().__init__()
-        if aux_shape is not None and mt_shape is not None:
-            pass
-        elif aux_shape is None and mt_shape is not None:
-            self.logits_net = Kspace_Net_MT(act_dim,
-                                            dataset,
-                                            image_shape,
-                                            dropout,
-                                            pretrained,
-                                            model_type,
-                                            dropout_extra,
-                                            feature_dim,
-                                            mt_shape,
-                                            )
-        else:
-            raise NotImplementedError("Not supported")
+        self.logits_net = Kspace_Net_MT(act_dim, feature_dim, mt_shape)
 
     def _distribution(self, obs, mask):
-        logits = self.logits_net(obs) # [batch_size, 65536]
+        logits = self.logits_net(obs)
         return MaskedCategorical(logits=logits, mask=mask)
 
     def _log_prob_from_distribution(self, pi, act):
@@ -111,55 +81,12 @@ class KspaceMaskedCategoricalActor_MT(Actor):
 
 class KspaceMaskedActorCritic_MT(nn.Module):
 
-    def __init__(self,
-                 observation_space,
-                 action_space,
-                 hidden_sizes=(64, 64),
-                 activation=nn.Tanh,
-                 dataset='cifar10',
-                 image_shape=[32, 32],
-                 dropout=0.0,
-                 pretrained=False,
-                 model_type='resnet50',
-                 model_type_critic='resnet50',
-                 dropout_extra=False,
-                 aux_shape=None,
-                 using_init=False,
-                 feature_dim=50,
-                 mt_shape=256,
-                 ):
+    def __init__(self, action_space, feature_dim=50, mt_shape=256):
 
         super().__init__()
         self._cur_mask = None
-
-        obs_dim = observation_space
-
-        self.pi = KspaceMaskedCategoricalActor_MT(obs_dim, action_space.n, hidden_sizes, activation,
-                                                  dataset,
-                                                  image_shape,
-                                                  dropout,
-                                                  pretrained,
-                                                  model_type,
-                                                  dropout_extra,
-                                                  aux_shape,
-                                                  using_init,
-                                                  feature_dim,
-                                                  mt_shape)
-
-        if aux_shape is not None and mt_shape is not None:
-            pass
-        elif aux_shape is None and mt_shape is not None:
-
-            self.v = Kspace_Net_Critic_MT(dataset,
-                                          image_shape,
-                                          dropout,
-                                          pretrained,
-                                          model_type_critic,
-                                          dropout_extra,
-                                          feature_dim,
-                                          mt_shape)
-        else:
-            raise NotImplementedError("Not supported")
+        self.pi = KspaceMaskedCategoricalActor_MT(action_space.n, feature_dim, mt_shape)
+        self.v = Kspace_Net_Critic_MT(feature_dim, mt_shape)
 
     def get_action_and_value(self, obs, mask, a=None, deterministic=False):
         pi = self.pi._distribution(obs, mask)
@@ -176,7 +103,7 @@ class KspaceMaskedActorCritic_MT(nn.Module):
 
         return a, logp_a, dist_entropy, v
 
-    def get_action_and_value_aux(self, obs, mask, a=None, deterministic=False, obs_aux=None):
+    def get_action_and_value_aux(self, obs, mask, a=None, deterministic=False):
 
         pi = self.pi._distribution(obs, mask)
         if a is None:
