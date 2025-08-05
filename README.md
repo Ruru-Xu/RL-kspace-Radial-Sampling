@@ -1,4 +1,4 @@
-PyTorch implementation of the paper "[Adaptive k-space Radial Sampling for Cardiac MRI with Reinforcement Learning](https://www.sciencedirect.com/science/article/pii/S092523122500788X)".
+PyTorch implementation of the paper "[Adaptive k-space Radial Sampling for Cardiac MRI with Reinforcement Learning](https://arxiv.org/submit/6683873/view)".
 
 ## 📁 Project Structure
 
